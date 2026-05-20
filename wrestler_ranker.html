@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wrestler Ranker</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0f0f0f;
+    --surface: #1a1a1a;
+    --surface2: #222;
+    --border: #2e2e2e;
+    --accent: #e8c84a;
+    --accent2: #c0392b;
+    --text: #f0f0f0;
+    --text2: #999;
+    --text3: #555;
+    --found-bg: #161616;
+    --radius: 6px;
+    --font-display: 'Barlow Condensed', sans-serif;
+    --font-body: 'Barlow', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font-body); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+  .topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+  .logo { font-family: var(--font-display); font-weight: 900; font-size: 20px; letter-spacing: .04em; color: var(--accent); text-transform: uppercase; }
+  .topbar-tabs { display: flex; gap: 4px; margin-left: auto; }
+  .tab-btn { font-family: var(--font-body); font-size: 13px; font-weight: 500; padding: 5px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; transition: all .15s; }
+  .tab-btn.active, .tab-btn:hover { background: var(--surface2); color: var(--text); border-color: #444; }
+  .tab-btn.active { border-color: var(--accent); color: var(--accent); }
+
+  .main { display: flex; flex: 1; overflow: hidden; }
+
+  .picker { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 14px 16px; gap: 12px; }
+
+  .stats-row { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+  .stat { display: flex; flex-direction: column; }
+  .stat-val { font-family: var(--font-display); font-size: 22px; font-weight: 700; line-height: 1; color: var(--accent); }
+  .stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+  .progress-wrap { flex: 1; }
+  .progress-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 4px; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width .4s ease; }
+  .progress-label { font-size: 11px; color: var(--text3); }
+
+  .batch-controls { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .batch-label { font-size: 12px; color: var(--text2); }
+  .batch-slider { flex: 1; accent-color: var(--accent); cursor: pointer; }
+  .batch-val { font-family: var(--font-display); font-size: 16px; font-weight: 700; color: var(--accent); min-width: 24px; text-align: right; }
+
+  .action-row { display: flex; gap: 8px; flex-shrink: 0; }
+  .action-btn { font-family: var(--font-body); font-size: 12px; font-weight: 500; padding: 6px 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; transition: all .15s; }
+  .action-btn:hover:not(:disabled) { border-color: #555; color: var(--text); background: var(--surface2); }
+  .action-btn:disabled { opacity: .3; cursor: not-allowed; }
+  .action-btn.danger:hover { border-color: var(--accent2); color: var(--accent2); }
+
+  .instruction { font-size: 12px; color: var(--text3); flex-shrink: 0; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; overflow-y: auto; flex: 1; align-content: start; }
+  .card { border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 10px 8px; cursor: pointer; transition: all .15s; background: var(--surface); display: flex; flex-direction: column; gap: 6px; user-select: none; }
+  .card:hover { border-color: #555; background: var(--surface2); }
+  .card.selected { border-color: var(--accent); background: #1f1c0a; }
+  .card-name { font-family: var(--font-display); font-size: 14px; font-weight: 600; line-height: 1.2; color: var(--text); }
+  .card.selected .card-name { color: var(--accent); }
+  .card-meta { font-size: 11px; color: var(--text3); line-height: 1.3; }
+  .card-link { font-size: 11px; color: var(--text3); text-decoration: none; display: inline-flex; align-items: center; gap: 3px; margin-top: auto; }
+  .card-link:hover { color: var(--accent); }
+
+  .confirm-row { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .selected-count { font-size: 13px; color: var(--text2); }
+  .confirm-btn { font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: .04em; padding: 8px 24px; border-radius: var(--radius); border: none; background: var(--accent); color: #0f0f0f; cursor: pointer; text-transform: uppercase; transition: all .15s; }
+  .confirm-btn:hover { background: #f0d060; }
+  .confirm-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+  .found-col { width: 220px; border-left: 1px solid var(--border); background: var(--found-bg); display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0; }
+  .found-header { font-family: var(--font-display); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text3); padding: 14px 14px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .found-list { overflow-y: auto; flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .found-item { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: var(--radius); border: 1px solid transparent; transition: border-color .15s; }
+  .found-item:hover { border-color: var(--border); }
+  .found-rank { font-family: var(--font-display); font-size: 13px; font-weight: 700; color: var(--text3); min-width: 24px; }
+  .found-rank.gold { color: var(--accent); }
+  .found-name { font-size: 13px; color: var(--text); flex: 1; line-height: 1.2; }
+  .found-link { color: var(--text3); text-decoration: none; flex-shrink: 0; font-size: 13px; }
+  .found-link:hover { color: var(--accent); }
+  .found-empty { font-size: 12px; color: var(--text3); padding: 12px 8px; line-height: 1.5; }
+
+  .options-panel { flex: 1; overflow-y: auto; padding: 20px; display: none; flex-direction: column; gap: 24px; }
+  .options-panel.visible { display: flex; }
+  .filter-section { display: flex; flex-direction: column; gap: 10px; }
+  .filter-title { font-family: var(--font-display); font-size: 15px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text2); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; transition: all .15s; }
+  .chip:hover { border-color: #555; color: var(--text); }
+  .chip.on { background: #1f1c0a; border-color: var(--accent); color: var(--accent); }
+  .options-actions { display: flex; gap: 10px; }
+  .opt-btn { font-size: 13px; font-weight: 500; padding: 8px 18px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text2); cursor: pointer; transition: all .15s; }
+  .opt-btn:hover { border-color: #555; color: var(--text); }
+  .opt-btn.primary { background: var(--accent); border-color: var(--accent); color: #0f0f0f; font-weight: 600; }
+  .opt-btn.primary:hover { background: #f0d060; }
+
+  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text3); text-align: center; }
+  .empty-state h2 { font-family: var(--font-display); font-size: 24px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text2); }
+  .empty-state p { font-size: 13px; line-height: 1.6; max-width: 280px; }
+  .start-btn { font-family: var(--font-display); font-size: 18px; font-weight: 700; letter-spacing: .06em; padding: 10px 32px; border-radius: var(--radius); border: none; background: var(--accent); color: #0f0f0f; cursor: pointer; text-transform: uppercase; margin-top: 8px; transition: all .15s; }
+  .start-btn:hover { background: #f0d060; }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; max-width: 320px; width: 90%; display: flex; flex-direction: column; gap: 16px; }
+  .modal h3 { font-family: var(--font-display); font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text); }
+  .modal p { font-size: 13px; color: var(--text2); line-height: 1.5; }
+  .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-cancel { font-size: 13px; padding: 7px 16px; border-radius: var(--radius); border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; }
+  .modal-cancel:hover { border-color: #555; color: var(--text); }
+  .modal-confirm { font-size: 13px; font-weight: 600; padding: 7px 16px; border-radius: var(--radius); border: none; background: var(--accent2); color: #fff; cursor: pointer; }
+  .modal-confirm:hover { background: #e74c3c; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">⚡ Wrestler Ranker</div>
+  <div class="topbar-tabs">
+    <button class="tab-btn active" onclick="showTab('picker')">Picker</button>
+    <button class="tab-btn" onclick="showTab('options')">Options</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="picker" id="picker-view">
+    <div class="empty-state" id="empty-state">
+      <h2>Ready to Rank?</h2>
+      <p id="pool-desc">Set your filters in Options, then start picking.</p>
+      <button class="start-btn" onclick="startSession()">Start Picking</button>
+    </div>
+
+    <div id="session-ui" style="display:none; flex-direction:column; gap:12px; flex:1; overflow:hidden;">
+      <div class="stats-row">
+        <div class="stat">
+          <div class="stat-val" id="stat-remaining">—</div>
+          <div class="stat-label">Remaining</div>
+        </div>
+        <div class="stat">
+          <div class="stat-val" id="stat-decided">—</div>
+          <div class="stat-label">Decided</div>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+          <div class="progress-label" id="progress-label">0 of 0 decided</div>
+        </div>
+      </div>
+
+      <div class="batch-controls">
+        <span class="batch-label">Batch size</span>
+        <input type="range" class="batch-slider" id="batch-slider" min="2" max="20" value="20" oninput="onBatchChange(this.value)">
+        <span class="batch-val" id="batch-val">20</span>
+      </div>
+
+      <div class="action-row">
+        <button class="action-btn" id="undo-btn" onclick="doUndo()" disabled>↩ Undo</button>
+        <button class="action-btn" id="redo-btn" onclick="doRedo()" disabled>↪ Redo</button>
+        <button class="action-btn" onclick="doPass()">⊘ Pass</button>
+        <button class="action-btn danger" id="reset-btn" onclick="doReset()">↺ Reset</button>
+      </div>
+
+      <div class="instruction">Pick your favourites — select any, then confirm. Unpicked items are eliminated.</div>
+
+      <div class="grid" id="card-grid"></div>
+
+      <div class="confirm-row">
+        <span class="selected-count" id="selected-count">0 selected</span>
+        <button class="confirm-btn" id="confirm-btn" onclick="doConfirm()" disabled>Confirm Picks →</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="options-panel" id="options-view">
+    <div class="filter-section">
+      <div class="filter-title">Gender</div>
+      <div class="chips" id="filter-gender">
+        <div class="chip on" data-val="man" onclick="toggleChip(this,'gender')">Men</div>
+        <div class="chip on" data-val="woman" onclick="toggleChip(this,'gender')">Women</div>
+      </div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-title">Status</div>
+      <div class="chips" id="filter-status">
+        <div class="chip on" data-val="active" onclick="toggleChip(this,'status')">Active</div>
+        <div class="chip on" data-val="inactive" onclick="toggleChip(this,'status')">Inactive</div>
+      </div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-title">Era</div>
+      <div class="chips" id="filter-era"></div>
+    </div>
+    <div class="filter-section">
+      <div class="filter-title">Promotion</div>
+      <div class="chips" id="filter-promotion"></div>
+    </div>
+    <div class="options-actions">
+      <button class="opt-btn primary" onclick="applyFilters()">Apply & Start</button>
+      <button class="opt-btn" onclick="selectAllFilters()">Select All</button>
+      <button class="opt-btn" onclick="deselectAllFilters()">Deselect All</button>
+    </div>
+  </div>
+
+  <div class="found-col">
+    <div class="found-header">Found Favorites</div>
+    <div class="found-list" id="found-list">
+      <div class="found-empty">Your ranked favorites will appear here as you pick.</div>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3>Reset Session</h3>
+    <p>This will reset your current progress back to the filtered pool. This cannot be undone.</p>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-confirm" onclick="confirmReset()">Reset</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── LOAD DATA ──
+// To use your real data, place wrestlers.json in the same folder as this file.
+// Falls back to demo data if not found.
+const DEMO = [
+  {id:1,name:"Shawn Michaels",promotion:["WWE","WWF"],era:["1980s","1990s","2000s"],gender:"man",active:false,url:"https://en.wikipedia.org/wiki/Shawn_Michaels"},
+  {id:2,name:"AJ Lee",promotion:["WWE"],era:["2010s"],gender:"woman",active:false,url:"https://en.wikipedia.org/wiki/AJ_Lee"},
+  {id:3,name:"Kenny Omega",promotion:["AEW","NJPW"],era:["2000s","2010s","2020s"],gender:"man",active:true,url:"https://en.wikipedia.org/wiki/Kenny_Omega"},
+  {id:4,name:"Sasha Banks",promotion:["WWE"],era:["2010s","2020s"],gender:"woman",active:true,url:"https://en.wikipedia.org/wiki/Sasha_Banks"},
+  {id:5,name:"Sting",promotion:["WCW","TNA","AEW"],era:["1980s","1990s","2000s","2010s","2020s"],gender:"man",active:false,url:"https://en.wikipedia.org/wiki/Sting_(wrestler)"},
+  {id:6,name:"Becky Lynch",promotion:["WWE"],era:["2010s","2020s"],gender:"woman",active:true,url:"https://en.wikipedia.org/wiki/Becky_Lynch"},
+  {id:7,name:"CM Punk",promotion:["WWE","AEW","ROH"],era:["2000s","2010s","2020s"],gender:"man",active:true,url:"https://en.wikipedia.org/wiki/CM_Punk"},
+  {id:8,name:"Trish Stratus",promotion:["WWE"],era:["1990s","2000s","2010s","2020s"],gender:"woman",active:false,url:"https://en.wikipedia.org/wiki/Trish_Stratus"},
+  {id:9,name:"Eddie Guerrero",promotion:["WWE","WCW","ECW"],era:["1980s","1990s","2000s"],gender:"man",active:false,url:"https://en.wikipedia.org/wiki/Eddie_Guerrero"},
+  {id:10,name:"Io Shirai",promotion:["WWE","STARDOM"],era:["2000s","2010s","2020s"],gender:"woman",active:true,url:"https://en.wikipedia.org/wiki/Io_Shirai"},
+  {id:11,name:"Triple H",promotion:["WWE","WWF"],era:["1990s","2000s","2010s"],gender:"man",active:false,url:"https://en.wikipedia.org/wiki/Triple_H"},
+  {id:12,name:"Lita",promotion:["WWE"],era:["1990s","2000s","2010s","2020s"],gender:"woman",active:false,url:"https://en.wikipedia.org/wiki/Lita_(wrestler)"},
+  {id:13,name:"The Undertaker",promotion:["WWE","WWF"],era:["1980s","1990s","2000s","2010s","2020s"],gender:"man",active:false,url:"https://en.wikipedia.org/wiki/The_Undertaker"},
+  {id:14,name:"Bianca Belair",promotion:["WWE"],era:["2010s","2020s"],gender:"woman",active:true,url:"https://en.wikipedia.org/wiki/Bianca_Belair"},
+  {id:15,name:"Randy Orton",promotion:["WWE"],era:["2000s","2010s","2020s"],gender:"man",active:true,url:"https://en.wikipedia.org/wiki/Randy_Orton"},
+  {id:16,name:"Rhea Ripley",promotion:["WWE"],era:["2010s","2020s"],gender:"woman",active:true,url:"https://en.wikipedia.org/wiki/Rhea_Ripley"},
+  {id:17,name:"Chris Jericho",promotion:["WWE","AEW","WCW"],era:["1990s","2000s","2010s","2020s"],gender:"man",active:true,url:"https://en.wikipedia.org/wiki/Chris_Jericho"},
+  {id:18,name:"Asuka",promotion:["WWE"],era:["2000s","2010s","2020s"],gender:"woman",active:true,url:"https://en.wikipedia.org/wiki/Asuka_(wrestler)"},
+  {id:19,name:"Stone Cold Steve Austin",promotion:["WWE","WCW","ECW"],era:["1990s","2000s"],gender:"man",active:false,url:"https://en.wikipedia.org/wiki/Stone_Cold_Steve_Austin"},
+  {id:20,name:"Bayley",promotion:["WWE"],era:["2010s","2020s"],gender:"woman",active:true,url:"https://en.wikipedia.org/wiki/Bayley"},
+  {id:21,name:"Roman Reigns",promotion:["WWE"],era:["2010s","2020s"],gender:"man",active:true,url:"https://en.wikipedia.org/wiki/Roman_Reigns"},
+  {id:22,name:"Bret Hart",promotion:["WWE","WCW"],era:["1980s","1990s","2000s"],gender:"man",active:false,url:"https://en.wikipedia.org/wiki/Bret_Hart"},
+  {id:23,name:"Charlotte Flair",promotion:["WWE"],era:["2010s","2020s"],gender:"woman",active:true,url:"https://en.wikipedia.org/wiki/Charlotte_Flair"},
+  {id:24,name:"Mick Foley",promotion:["WWE","WCW","ECW"],era:["1980s","1990s","2000s"],gender:"man",active:false,url:"https://en.wikipedia.org/wiki/Mick_Foley"},
+];
+
+let allWrestlers = [];
+let filters = { gender: [], status: [], era: [], promotion: [] };
+let session = null;
+let prevState = null;
+let nextState = null;
+
+async function loadWrestlers() {
+  try {
+    const r = await fetch('wrestlers.json');
+    if (r.ok) { allWrestlers = await r.json(); }
+    else { allWrestlers = DEMO; }
+  } catch(e) { allWrestlers = DEMO; }
+  init();
+}
+
+function init() {
+  buildFilterChips();
+  const saved = loadState();
+  if (saved && saved.session) {
+    session = saved.session;
+    filters = saved.filters;
+    restoreFilterUI();
+    showTab('picker');
+    renderSession();
+  } else {
+    // default all filters on
+    filters.gender = ['man','woman'];
+    filters.status = ['active','inactive'];
+    filters.era = [...new Set(allWrestlers.flatMap(w => w.era))];
+    filters.promotion = [...new Set(allWrestlers.flatMap(w => w.promotion))];
+    restoreFilterUI();
+    updatePoolDesc();
+  }
+}
+
+function buildFilterChips() {
+  const eras = [...new Set(allWrestlers.flatMap(w => w.era))].sort();
+  const promos = [...new Set(allWrestlers.flatMap(w => w.promotion))].sort();
+
+  const eraEl = document.getElementById('filter-era');
+  eraEl.innerHTML = eras.map(e => `<div class="chip" data-val="${e}" onclick="toggleChip(this,'era')">${e}</div>`).join('');
+
+  const promoEl = document.getElementById('filter-promotion');
+  promoEl.innerHTML = promos.map(p => `<div class="chip" data-val="${p}" onclick="toggleChip(this,'promotion')">${p}</div>`).join('');
+}
+
+function restoreFilterUI() {
+  ['gender','status','era','promotion'].forEach(cat => {
+    document.querySelectorAll(`#filter-${cat} .chip`).forEach(chip => {
+      chip.classList.toggle('on', filters[cat].includes(chip.dataset.val));
+    });
+  });
+}
+
+function toggleChip(el, cat) {
+  el.classList.toggle('on');
+  filters[cat] = [...document.querySelectorAll(`#filter-${cat} .chip.on`)].map(c => c.dataset.val);
+  updatePoolDesc();
+}
+
+function selectAllFilters() {
+  document.querySelectorAll('.chip').forEach(c => c.classList.add('on'));
+  ['gender','status','era','promotion'].forEach(cat => {
+    filters[cat] = [...document.querySelectorAll(`#filter-${cat} .chip`)].map(c => c.dataset.val);
+  });
+  updatePoolDesc();
+}
+
+function deselectAllFilters() {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+  filters = { gender: [], status: [], era: [], promotion: [] };
+  updatePoolDesc();
+}
+
+function getFilteredPool() {
+  return allWrestlers.filter(w => {
+    const statusOk = (filters.status.includes('active') && w.active) || (filters.status.includes('inactive') && !w.active);
+    const genderOk = filters.gender.includes(w.gender);
+    const eraOk = filters.era.length === 0 || w.era.some(e => filters.era.includes(e));
+    const promoOk = filters.promotion.length === 0 || w.promotion.some(p => filters.promotion.includes(p));
+    return statusOk && genderOk && eraOk && promoOk;
+  });
+}
+
+function updatePoolDesc() {
+  const n = getFilteredPool().length;
+  document.getElementById('pool-desc').textContent = `${n} wrestlers in your pool. Adjust filters in Options, then start picking.`;
+}
+
+function applyFilters() {
+  showTab('picker');
+  startSession();
+}
+
+function startSession() {
+  const pool = getFilteredPool();
+  if (!pool.length) { alert('No wrestlers match your filters.'); return; }
+  session = {
+    pool: pool.map(w => ({...w, seen: 0})),
+    active: pool.map(w => w.id),
+    eliminated: {},
+    rescued: [],
+    found: [],
+    currentBatch: [],
+    queue: [],
+    batchSize: computeBatchSize(pool.length),
+    totalPool: pool.length,
+  };
+  prevState = null;
+  nextState = null;
+  drawBatch();
+  renderSession();
+  saveState();
+}
+
+function computeBatchSize(n) {
+  if (n > 500) return 20;
+  if (n > 200) return 15;
+  if (n > 100) return 10;
+  if (n > 50)  return 7;
+  if (n > 20)  return 5;
+  return 2;
+}
+
+function drawBatch() {
+  if (!session) return;
+  if (session.active.length === 0) {
+    if (session.rescued.length > 0) {
+      session.active = [...session.rescued];
+      session.rescued = [];
+    } else {
+      session.currentBatch = [];
+      return;
+    }
+  }
+  // Maintain a queue so every wrestler is seen once before any repeat
+  // queue holds ids in order; refill when empty
+  if (!session.queue || session.queue.length === 0) {
+    // shuffle active into a new queue
+    const shuffled = [...session.active].sort(() => Math.random() - 0.5);
+    session.queue = shuffled;
+  }
+  // Remove any ids from queue that are no longer active
+  session.queue = session.queue.filter(id => session.active.includes(id));
+  // If queue emptied after filter, refill
+  if (session.queue.length === 0) {
+    session.queue = [...session.active].sort(() => Math.random() - 0.5);
+  }
+  const bs = Math.min(session.batchSize, session.queue.length);
+  session.currentBatch = session.queue.splice(0, bs);
+}
+
+function doConfirm() {
+  if (!session) return;
+  const selected = [...document.querySelectorAll('.card.selected')].map(c => parseInt(c.dataset.id));
+  if (!selected.length) return;
+  saveUndo();
+
+  const idMap = Object.fromEntries(session.pool.map(w => [w.id, w]));
+  const losers = session.currentBatch.filter(id => !selected.includes(id));
+
+  session.currentBatch.forEach(id => { if (idMap[id]) idMap[id].seen++; });
+  losers.forEach(id => {
+    session.eliminated[id] = selected[0];
+    session.active = session.active.filter(i => i !== id);
+  });
+
+  // If only one item left in active, it wins this rank
+  if (session.active.length === 1) {
+    const winnerId = session.active[0];
+    const rank = session.found.length + 1;
+    session.found.push({ id: winnerId, rank });
+    session.active = [];
+    Object.entries(session.eliminated).forEach(([loserId, byId]) => {
+      if (parseInt(byId) === winnerId) {
+        session.rescued.push(parseInt(loserId));
+        delete session.eliminated[loserId];
+      }
+    });
+  }
+
+  nextState = null;
+  drawBatch();
+  renderSession();
+  saveState();
+}
+
+function doPass() {
+  if (!session) return;
+  saveUndo();
+  // Put passed batch at back of queue so they're seen last this round
+  session.queue = session.queue.filter(id => !session.currentBatch.includes(id));
+  nextState = null;
+  drawBatch();
+  renderSession();
+  saveState();
+}
+
+function doUndo() {
+  if (!prevState) return;
+  nextState = JSON.stringify(session);
+  session = JSON.parse(prevState);
+  prevState = null;
+  renderSession();
+  saveState();
+}
+
+function doRedo() {
+  if (!nextState) return;
+  prevState = JSON.stringify(session);
+  session = JSON.parse(nextState);
+  nextState = null;
+  renderSession();
+  saveState();
+}
+
+function saveUndo() {
+  prevState = JSON.stringify(session);
+  nextState = null;
+}
+
+function doReset() {
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+}
+
+function confirmReset() {
+  closeModal();
+  session = null;
+  prevState = null;
+  nextState = null;
+  startSession();
+}
+
+function renderSession() {
+  const has = !!session;
+  document.getElementById('empty-state').style.display = has ? 'none' : 'flex';
+  document.getElementById('session-ui').style.display = has ? 'flex' : 'none';
+  if (!has) { updatePoolDesc(); return; }
+
+  const idMap = Object.fromEntries(session.pool.map(w => [w.id, w]));
+  const total = session.totalPool;
+  const decided = Object.keys(session.eliminated).length + session.found.length;
+  const remaining = session.active.length + session.rescued.length;
+  const pct = total > 0 ? Math.round(decided / total * 100) : 0;
+
+  document.getElementById('stat-remaining').textContent = remaining;
+  document.getElementById('stat-decided').textContent = decided;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = `${decided} of ${total} decided (${pct}%)`;
+
+  const slider = document.getElementById('batch-slider');
+  slider.max = Math.min(20, Math.max(2, session.active.length));
+  slider.value = session.batchSize;
+  document.getElementById('batch-val').textContent = session.batchSize;
+
+  document.getElementById('undo-btn').disabled = !prevState;
+  document.getElementById('redo-btn').disabled = !nextState;
+
+  const grid = document.getElementById('card-grid');
+  grid.innerHTML = '';
+  session.currentBatch.forEach(id => {
+    const w = idMap[id];
+    if (!w) return;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.id = id;
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'card-name';
+    nameEl.textContent = w.name;
+
+    const metaEl = document.createElement('div');
+    metaEl.className = 'card-meta';
+    metaEl.textContent = (w.promotion || []).slice(0,2).join(', ');
+
+    card.appendChild(nameEl);
+    card.appendChild(metaEl);
+
+    const linkUrl = w.cagematch_url || w.url;
+    if (linkUrl) {
+      const link = document.createElement('a');
+      link.className = 'card-link';
+      link.href = '#';
+      link.textContent = '↗ cagematch';
+      link.addEventListener('click', e => {
+        e.stopPropagation();
+        e.preventDefault();
+        window.open(linkUrl, '_blank');
+      });
+      card.appendChild(link);
+    }
+
+    card.addEventListener('click', () => { card.classList.toggle('selected'); updateConfirm(); });
+    grid.appendChild(card);
+  });
+  updateConfirm();
+
+  const foundList = document.getElementById('found-list');
+  if (!session.found.length) {
+    foundList.innerHTML = '<div class="found-empty">Your ranked favorites will appear here as you pick.</div>';
+  } else {
+    foundList.innerHTML = session.found.map((f, i) => {
+      const w = idMap[f.id];
+      if (!w) return '';
+      return `<div class="found-item">
+        <span class="found-rank ${i === 0 ? 'gold' : ''}">#${f.rank}</span>
+        <span class="found-name">${w.name}</span>
+        ${w.url ? `<a class="found-link" href="#" onclick="event.preventDefault(); window.open('${w.cagematch_url || w.url}', '_blank')">↗</a>` : ''}
+      </div>`;
+    }).join('');
+  }
+}
+
+function updateConfirm() {
+  const n = document.querySelectorAll('.card.selected').length;
+  document.getElementById('selected-count').textContent = `${n} selected`;
+  document.getElementById('confirm-btn').disabled = n === 0;
+}
+
+function onBatchChange(val) {
+  if (!session) return;
+  session.batchSize = parseInt(val);
+  document.getElementById('batch-val').textContent = val;
+  // Put current batch back into front of queue and redraw
+  session.queue = [...session.currentBatch, ...session.queue];
+  drawBatch();
+  renderSession();
+  saveState();
+}
+
+function showTab(tab) {
+  const isPicker = tab === 'picker';
+  document.getElementById('picker-view').style.display = isPicker ? 'flex' : 'none';
+  const opts = document.getElementById('options-view');
+  opts.style.display = isPicker ? 'none' : 'flex';
+  opts.classList.toggle('visible', !isPicker);
+  document.querySelectorAll('.tab-btn').forEach((b, i) => b.classList.toggle('active', isPicker ? i === 0 : i === 1));
+}
+
+function saveState() {
+  try { localStorage.setItem('wrestler_ranker', JSON.stringify({ session, filters })); } catch(e) {}
+}
+
+function loadState() {
+  try { const s = localStorage.getItem('wrestler_ranker'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
+}
+
+loadWrestlers();
+</script>
+</body>
+</html>
