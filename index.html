@@ -1,0 +1,896 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wrestler Ranker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --font: 'Atkinson Hyperlegible', sans-serif;
+    --radius: 5px;
+    --t: 140ms ease;
+  }
+  :root, [data-theme="light"] {
+    --bg: #f4f4f5;
+    --surface: #ffffff;
+    --surface2: #ebebec;
+    --border: #d4d4d8;
+    --border-strong: #a1a1aa;
+    --text: #18181b;
+    --text2: #52525b;
+    --text3: #a1a1aa;
+    --accent: #1d4ed8;
+    --accent-hover: #1e40af;
+    --accent-light: #eff6ff;
+    --accent-text: #ffffff;
+    --danger: #dc2626;
+    --found-bg: #fafafa;
+  }
+  [data-theme="dark"] {
+    --bg: #0f0f10;
+    --surface: #18181b;
+    --surface2: #27272a;
+    --border: #3f3f46;
+    --border-strong: #71717a;
+    --text: #fafafa;
+    --text2: #a1a1aa;
+    --text3: #52525b;
+    --accent: #60a5fa;
+    --accent-hover: #93c5fd;
+    --accent-light: #172554;
+    --accent-text: #0f172a;
+    --danger: #f87171;
+    --found-bg: #111113;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+
+  /* TOPBAR */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 14px;
+    height: 44px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .logo { font-weight: 700; font-size: 15px; color: var(--text); }
+  .spacer { flex: 1; }
+  .tab-row { display: flex; gap: 2px; }
+  .tab {
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all var(--t);
+  }
+  .tab:hover { background: var(--surface2); color: var(--text); }
+  .tab.active { background: var(--surface2); color: var(--text); border-color: var(--border); }
+  .theme-btn {
+    font-family: var(--font);
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    margin-left: 6px;
+    transition: all var(--t);
+  }
+  .theme-btn:hover { color: var(--text); }
+
+  /* MAIN */
+  .main { display: flex; flex: 1; overflow: hidden; }
+
+  /* LOADING / ERROR */
+  .status-screen {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 10px;
+    color: var(--text2);
+    font-size: 14px;
+  }
+  .status-screen.error { color: var(--danger); }
+
+  /* PICKER */
+  .picker {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 12px 14px;
+    gap: 8px;
+  }
+
+  /* Stats */
+  .stats-row { display: flex; align-items: center; gap: 18px; flex-shrink: 0; }
+  .stat { display: flex; flex-direction: column; gap: 1px; }
+  .stat-val { font-size: 19px; font-weight: 700; line-height: 1; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .stat-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .06em; }
+  .progress-wrap { flex: 1; }
+  .progress-bar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; margin-bottom: 3px; }
+  .progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .35s ease; }
+  .progress-label { font-size: 11px; color: var(--text3); font-variant-numeric: tabular-nums; }
+
+  /* Controls */
+  .controls-row { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .control-label { font-size: 12px; color: var(--text3); white-space: nowrap; }
+  .batch-slider { flex: 1; max-width: 140px; accent-color: var(--accent); cursor: pointer; }
+  .batch-val { font-size: 13px; font-weight: 700; color: var(--accent); min-width: 20px; font-variant-numeric: tabular-nums; }
+  .btn {
+    font-family: var(--font);
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all var(--t);
+    white-space: nowrap;
+  }
+  .btn:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text); }
+  .btn:disabled { opacity: .3; cursor: not-allowed; }
+  .btn.danger:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+  /* Instruction */
+  .instruction { font-size: 11px; color: var(--text3); flex-shrink: 0; }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 6px;
+    overflow-y: auto;
+    flex: 1;
+    align-content: start;
+  }
+  .card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 10px;
+    cursor: pointer;
+    transition: border-color var(--t), background var(--t);
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    user-select: none;
+    min-height: 52px;
+  }
+  .card:hover { border-color: var(--border-strong); }
+  .card.selected { border-color: var(--accent); background: var(--accent-light); }
+  .card-name { font-size: 13px; font-weight: 700; line-height: 1.2; color: var(--text); }
+  .card.selected .card-name { color: var(--accent); }
+  .card-link {
+    font-size: 11px;
+    color: var(--text3);
+    text-decoration: none;
+    margin-top: auto;
+    width: fit-content;
+  }
+  .card-link:hover { color: var(--accent); }
+
+  /* Confirm */
+  .confirm-row { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .sel-count { font-size: 12px; color: var(--text3); font-variant-numeric: tabular-nums; }
+  .confirm-btn {
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 7px 18px;
+    border-radius: var(--radius);
+    border: none;
+    background: var(--accent);
+    color: var(--accent-text);
+    cursor: pointer;
+    transition: background var(--t);
+  }
+  .confirm-btn:hover { background: var(--accent-hover); }
+  .confirm-btn:disabled { opacity: .3; cursor: not-allowed; }
+
+  /* FOUND / RANKING */
+  .found-col {
+    width: 220px;
+    border-left: 1px solid var(--border);
+    background: var(--found-bg);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .found-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 10px 8px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+  }
+  .found-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); }
+  .export-btn {
+    font-family: var(--font);
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text2);
+    cursor: pointer;
+    transition: all var(--t);
+  }
+  .export-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .found-list {
+    overflow-y: auto;
+    flex: 1;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+  }
+  .found-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 7px;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    cursor: grab;
+    user-select: none;
+    transition: background var(--t), border-color var(--t);
+  }
+  .found-item:hover { background: var(--surface2); }
+  .found-item.dragging { opacity: .3; }
+  .found-item.drag-over { border-color: var(--accent); background: var(--accent-light); }
+  .drag-handle { font-size: 11px; color: var(--text3); flex-shrink: 0; }
+  .found-rank { font-size: 11px; font-weight: 700; color: var(--text3); min-width: 22px; font-variant-numeric: tabular-nums; }
+  .found-rank.top { color: var(--accent); }
+  .found-name { font-size: 12px; color: var(--text); flex: 1; line-height: 1.2; }
+  .found-link { color: var(--text3); text-decoration: none; font-size: 12px; flex-shrink: 0; }
+  .found-link:hover { color: var(--accent); }
+  .found-empty { font-size: 12px; color: var(--text3); padding: 10px 8px; line-height: 1.6; }
+
+  /* EMPTY STATE */
+  .empty-state {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 10px; text-align: center; padding: 24px;
+  }
+  .empty-state h2 { font-size: 18px; font-weight: 700; color: var(--text); }
+  .empty-state p { font-size: 13px; color: var(--text2); max-width: 280px; line-height: 1.6; }
+  .start-btn {
+    font-family: var(--font); font-size: 13px; font-weight: 700;
+    padding: 8px 24px; border-radius: var(--radius); border: none;
+    background: var(--accent); color: var(--accent-text);
+    cursor: pointer; transition: background var(--t); margin-top: 6px;
+  }
+  .start-btn:hover { background: var(--accent-hover); }
+
+  /* OPTIONS */
+  .options-panel { flex: 1; overflow-y: auto; padding: 14px; display: none; flex-direction: column; gap: 16px; }
+  .options-panel.visible { display: flex; }
+  .filter-section { display: flex; flex-direction: column; gap: 6px; }
+  .filter-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text3); }
+  .filter-sub { font-size: 11px; color: var(--text3); margin-top: -2px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .chip {
+    font-family: var(--font); font-size: 12px; padding: 3px 9px;
+    border-radius: 20px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text2);
+    cursor: pointer; transition: all var(--t);
+  }
+  .chip:hover { border-color: var(--border-strong); color: var(--text); }
+  .chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .options-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .opt-btn {
+    font-family: var(--font); font-size: 12px; padding: 5px 12px;
+    border-radius: var(--radius); border: 1px solid var(--border);
+    background: var(--surface); color: var(--text2);
+    cursor: pointer; transition: all var(--t);
+  }
+  .opt-btn:hover { border-color: var(--border-strong); color: var(--text); }
+  .opt-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 700; }
+  .opt-btn.primary:hover { background: var(--accent-hover); }
+  .pool-count { font-size: 12px; color: var(--text2); }
+  .pool-count strong { color: var(--text); }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px; max-width: 300px; width: 90%; display: flex; flex-direction: column; gap: 10px; }
+  .modal h3 { font-size: 15px; font-weight: 700; }
+  .modal p { font-size: 13px; color: var(--text2); line-height: 1.6; }
+  .modal-btns { display: flex; gap: 6px; justify-content: flex-end; margin-top: 2px; }
+  .modal-cancel { font-family: var(--font); font-size: 12px; padding: 5px 12px; border-radius: var(--radius); border: 1px solid var(--border); background: transparent; color: var(--text2); cursor: pointer; }
+  .modal-cancel:hover { color: var(--text); }
+  .modal-confirm { font-family: var(--font); font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: var(--radius); border: none; background: var(--danger); color: #fff; cursor: pointer; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">Wrestler Ranker</span>
+  <div class="spacer"></div>
+  <div class="tab-row">
+    <button class="tab active" id="tab-picker" onclick="showTab('picker')">Picker</button>
+    <button class="tab" id="tab-options" onclick="showTab('options')">Options</button>
+  </div>
+  <button class="theme-btn" id="theme-btn" onclick="toggleTheme()">Dark</button>
+</div>
+
+<div class="main" id="main">
+  <div class="status-screen" id="loading-screen">Loading wrestlers…</div>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3>Reset session?</h3>
+    <p>Your current progress will be lost and the session will restart with the current filtered pool.</p>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+      <button class="modal-confirm" onclick="confirmReset()">Reset</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── THEME ──────────────────────────────────────────────────────────────────
+const prefersDark = window.matchMedia('(prefers-color-scheme: dark)');
+let currentTheme = localStorage.getItem('wr_theme') || (prefersDark.matches ? 'dark' : 'light');
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('theme-btn').textContent = t === 'dark' ? 'Light' : 'Dark';
+  currentTheme = t;
+  localStorage.setItem('wr_theme', t);
+}
+function toggleTheme() { applyTheme(currentTheme === 'dark' ? 'light' : 'dark'); }
+applyTheme(currentTheme);
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let allWrestlers = [];
+let filters = { gender: [], status: [], era: [], promoIndividual: [], promoGroups: [] };
+let session = null;
+let prevState = null;
+let nextState = null;
+let dragSrcIdx = null;
+
+// ── LOAD ───────────────────────────────────────────────────────────────────
+async function loadWrestlers() {
+  try {
+    const r = await fetch('wrestlers.json');
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    allWrestlers = await r.json();
+    onDataLoaded();
+  } catch(e) {
+    document.getElementById('loading-screen').className = 'status-screen error';
+    document.getElementById('loading-screen').textContent = `Failed to load data: ${e.message}`;
+  }
+}
+
+function onDataLoaded() {
+  buildUI();
+  const saved = loadState();
+  if (saved && saved.session && saved.filters) {
+    session = saved.session;
+    filters = saved.filters;
+    restoreFilterUI();
+    renderApp();
+    showTab('picker');
+    renderSession();
+  } else {
+    setDefaultFilters();
+    restoreFilterUI();
+    renderApp();
+    updatePoolDesc();
+  }
+}
+
+function buildUI() {
+  const main = document.getElementById('main');
+  main.innerHTML = `
+    <!-- PICKER -->
+    <div class="picker" id="picker-view">
+      <div class="empty-state" id="empty-state">
+        <h2>Ready to rank?</h2>
+        <p id="pool-desc">Set your filters in Options, then start picking.</p>
+        <button class="start-btn" onclick="startSession()">Start picking</button>
+      </div>
+      <div id="session-ui" style="display:none;flex-direction:column;gap:8px;flex:1;overflow:hidden;">
+        <div class="stats-row">
+          <div class="stat">
+            <div class="stat-val" id="stat-remaining">—</div>
+            <div class="stat-label">Remaining</div>
+          </div>
+          <div class="stat">
+            <div class="stat-val" id="stat-decided">—</div>
+            <div class="stat-label">Decided</div>
+          </div>
+          <div class="progress-wrap">
+            <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+            <div class="progress-label" id="progress-label">0 of 0 decided</div>
+          </div>
+        </div>
+        <div class="controls-row">
+          <span class="control-label">Batch</span>
+          <input type="range" class="batch-slider" id="batch-slider" min="2" max="20" value="20" oninput="onBatchChange(this.value)">
+          <span class="batch-val" id="batch-val">20</span>
+          <button class="btn" id="undo-btn" onclick="doUndo()" disabled>↩ Undo</button>
+          <button class="btn" id="redo-btn" onclick="doRedo()" disabled>↪ Redo</button>
+          <button class="btn" onclick="doPass()">Pass</button>
+          <button class="btn danger" onclick="doReset()">Reset</button>
+        </div>
+        <div class="instruction">Select your favourites from the batch, then confirm. Unselected items are eliminated.</div>
+        <div class="grid" id="card-grid"></div>
+        <div class="confirm-row">
+          <span class="sel-count" id="sel-count">0 selected</span>
+          <button class="confirm-btn" id="confirm-btn" onclick="doConfirm()" disabled>Confirm →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPTIONS -->
+    <div class="options-panel" id="options-view">
+      <div class="filter-section">
+        <div class="filter-title">Gender</div>
+        <div class="chips" id="filter-gender">
+          <div class="chip" data-val="man" onclick="toggleChip(this,'gender')">Men</div>
+          <div class="chip" data-val="woman" onclick="toggleChip(this,'gender')">Women</div>
+        </div>
+      </div>
+      <div class="filter-section">
+        <div class="filter-title">Status</div>
+        <div class="chips" id="filter-status">
+          <div class="chip" data-val="active" onclick="toggleChip(this,'status')">Active</div>
+          <div class="chip" data-val="inactive" onclick="toggleChip(this,'status')">Inactive</div>
+        </div>
+      </div>
+      <div class="filter-section">
+        <div class="filter-title">Era</div>
+        <div class="chips" id="filter-era"></div>
+      </div>
+      <div class="filter-section">
+        <div class="filter-title">Promotion — Individual</div>
+        <div class="filter-sub">Major promotions</div>
+        <div class="chips" id="filter-promo-individual"></div>
+      </div>
+      <div class="filter-section">
+        <div class="filter-title">Promotion — Groups</div>
+        <div class="filter-sub">Regional &amp; style buckets (includes majors)</div>
+        <div class="chips" id="filter-promo-groups"></div>
+      </div>
+      <div class="pool-count" id="pool-count"></div>
+      <div class="options-actions">
+        <button class="opt-btn primary" onclick="applyFilters()">Apply &amp; start</button>
+        <button class="opt-btn" onclick="selectAllFilters()">Select all</button>
+        <button class="opt-btn" onclick="deselectAllFilters()">Deselect all</button>
+      </div>
+    </div>
+
+    <!-- FINAL RANKING -->
+    <div class="found-col">
+      <div class="found-header">
+        <span class="found-title">Final Ranking</span>
+        <button class="export-btn" onclick="doExport()">Export</button>
+      </div>
+      <div class="found-list" id="found-list">
+        <div class="found-empty">Your ranked wrestlers will appear here as you pick.</div>
+      </div>
+    </div>
+  `;
+
+  buildFilterChips();
+}
+
+function renderApp() {
+  // nothing extra needed — buildUI sets everything up
+}
+
+// ── FILTERS ────────────────────────────────────────────────────────────────
+function getAvailableEras() {
+  return [...new Set(allWrestlers.flatMap(w => w.era || []))].sort();
+}
+function getAvailableIndividual() {
+  return [...new Set(allWrestlers.flatMap(w => w.promotion_labels || []))].sort();
+}
+function getAvailableGroups() {
+  return [...new Set(allWrestlers.flatMap(w => w.promotion_groups || []))].sort();
+}
+
+function setDefaultFilters() {
+  filters.gender = ['man','woman'];
+  filters.status = ['active','inactive'];
+  filters.era = getAvailableEras();
+  filters.promoIndividual = getAvailableIndividual();
+  filters.promoGroups = getAvailableGroups();
+}
+
+function buildFilterChips() {
+  const eras = getAvailableEras();
+  const indiv = getAvailableIndividual();
+  const groups = getAvailableGroups();
+  document.getElementById('filter-era').innerHTML =
+    eras.map(e => `<div class="chip" data-val="${e}" onclick="toggleChip(this,'era')">${e}</div>`).join('');
+  document.getElementById('filter-promo-individual').innerHTML =
+    indiv.map(p => `<div class="chip" data-val="${p}" onclick="toggleChip(this,'promoIndividual')">${p}</div>`).join('');
+  document.getElementById('filter-promo-groups').innerHTML =
+    groups.map(g => `<div class="chip" data-val="${g}" onclick="toggleChip(this,'promoGroups')">${g}</div>`).join('');
+}
+
+function restoreFilterUI() {
+  ['gender','status','era'].forEach(cat => {
+    document.querySelectorAll(`#filter-${cat} .chip`).forEach(c => {
+      c.classList.toggle('on', filters[cat].includes(c.dataset.val));
+    });
+  });
+  document.querySelectorAll('#filter-promo-individual .chip').forEach(c => {
+    c.classList.toggle('on', filters.promoIndividual.includes(c.dataset.val));
+  });
+  document.querySelectorAll('#filter-promo-groups .chip').forEach(c => {
+    c.classList.toggle('on', filters.promoGroups.includes(c.dataset.val));
+  });
+  updatePoolDesc();
+}
+
+function toggleChip(el, cat) {
+  el.classList.toggle('on');
+  if (cat === 'promoIndividual') {
+    filters.promoIndividual = [...document.querySelectorAll('#filter-promo-individual .chip.on')].map(c => c.dataset.val);
+  } else if (cat === 'promoGroups') {
+    filters.promoGroups = [...document.querySelectorAll('#filter-promo-groups .chip.on')].map(c => c.dataset.val);
+  } else {
+    filters[cat] = [...document.querySelectorAll(`#filter-${cat} .chip.on`)].map(c => c.dataset.val);
+  }
+  updatePoolDesc();
+}
+
+function selectAllFilters() {
+  document.querySelectorAll('.chip').forEach(c => c.classList.add('on'));
+  filters.gender = ['man','woman'];
+  filters.status = ['active','inactive'];
+  filters.era = getAvailableEras();
+  filters.promoIndividual = getAvailableIndividual();
+  filters.promoGroups = getAvailableGroups();
+  updatePoolDesc();
+}
+
+function deselectAllFilters() {
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('on'));
+  filters = { gender: [], status: [], era: [], promoIndividual: [], promoGroups: [] };
+  updatePoolDesc();
+}
+
+function eraQualifies(w, era) {
+  const decade = parseInt(era);
+  const stints = w.stints || [];
+  if (stints.length > 0) {
+    return stints.some(s => {
+      if (!s.year_start || !s.year_end) return false;
+      const overlapStart = Math.max(s.year_start, decade);
+      const overlapEnd = Math.min(s.year_end, decade + 9);
+      return overlapEnd - overlapStart >= 2;
+    });
+  }
+  return (w.era || []).includes(era);
+}
+
+function getFilteredPool() {
+  const hasIndiv = filters.promoIndividual.length > 0;
+  const hasGroup = filters.promoGroups.length > 0;
+  const hasEra = filters.era.length > 0;
+  const hasPromo = hasIndiv || hasGroup;
+
+  return allWrestlers.filter(w => {
+    const statusOk = (filters.status.includes('active') && w.active) ||
+                     (filters.status.includes('inactive') && !w.active);
+    const genderOk = filters.gender.includes(w.gender);
+    const eraOk = !hasEra || filters.era.some(e => eraQualifies(w, e));
+    let promoOk = true;
+    if (hasPromo) {
+      const indivMatch = hasIndiv && (w.promotion_labels || []).some(p => filters.promoIndividual.includes(p));
+      const groupMatch = hasGroup && (w.promotion_groups || []).some(g => filters.promoGroups.includes(g));
+      promoOk = indivMatch || groupMatch;
+    }
+    return statusOk && genderOk && eraOk && promoOk;
+  });
+}
+
+function updatePoolDesc() {
+  const n = getFilteredPool().length;
+  const desc = document.getElementById('pool-desc');
+  const count = document.getElementById('pool-count');
+  if (desc) desc.innerHTML = `<strong>${n}</strong> wrestlers match your current filters.`;
+  if (count) count.innerHTML = `<strong>${n}</strong> wrestlers match your current filters.`;
+}
+
+function applyFilters() {
+  showTab('picker');
+  startSession();
+}
+
+// ── SESSION ────────────────────────────────────────────────────────────────
+function startSession() {
+  const pool = getFilteredPool();
+  if (!pool.length) { alert('No wrestlers match your filters.'); return; }
+  session = {
+    pool: pool.map(w => ({...w})),
+    active: pool.map(w => w.id),
+    eliminated: {},
+    rescued: [],
+    found: [],
+    currentBatch: [],
+    queue: [],
+    batchSize: computeBatchSize(pool.length),
+    totalPool: pool.length,
+  };
+  prevState = null;
+  nextState = null;
+  drawBatch();
+  renderSession();
+  saveState();
+}
+
+function computeBatchSize(n) {
+  if (n > 500) return 20;
+  if (n > 200) return 15;
+  if (n > 100) return 10;
+  if (n > 50)  return 7;
+  if (n > 20)  return 5;
+  return 2;
+}
+
+function drawBatch() {
+  if (!session) return;
+  if (session.active.length === 0) {
+    if (session.rescued.length > 0) {
+      session.active = [...session.rescued];
+      session.rescued = [];
+    } else { session.currentBatch = []; return; }
+  }
+  if (!session.queue || session.queue.length === 0) {
+    session.queue = [...session.active].sort(() => Math.random() - 0.5);
+  }
+  session.queue = session.queue.filter(id => session.active.includes(id));
+  if (session.queue.length === 0) {
+    session.queue = [...session.active].sort(() => Math.random() - 0.5);
+  }
+  const bs = Math.min(session.batchSize, session.queue.length);
+  session.currentBatch = session.queue.splice(0, bs);
+}
+
+function doConfirm() {
+  if (!session) return;
+  const selected = [...document.querySelectorAll('.card.selected')].map(c => parseInt(c.dataset.id));
+  if (!selected.length) return;
+  saveUndo();
+  const losers = session.currentBatch.filter(id => !selected.includes(id));
+  losers.forEach(id => {
+    session.eliminated[id] = selected[0];
+    session.active = session.active.filter(i => i !== id);
+  });
+  if (session.active.length === 1) {
+    const winnerId = session.active[0];
+    session.found.push({ id: winnerId, rank: session.found.length + 1 });
+    session.active = [];
+    Object.entries(session.eliminated).forEach(([loserId, byId]) => {
+      if (parseInt(byId) === winnerId) {
+        session.rescued.push(parseInt(loserId));
+        delete session.eliminated[loserId];
+      }
+    });
+  }
+  nextState = null;
+  drawBatch();
+  renderSession();
+  saveState();
+}
+
+function doPass() {
+  if (!session) return;
+  saveUndo();
+  // Pass: put current batch at back of queue
+  session.queue = [...(session.queue || []), ...session.currentBatch];
+  nextState = null;
+  drawBatch();
+  renderSession();
+  saveState();
+}
+
+function doUndo() {
+  if (!prevState) return;
+  nextState = JSON.stringify(session);
+  session = JSON.parse(prevState);
+  prevState = null;
+  renderSession();
+  saveState();
+}
+
+function doRedo() {
+  if (!nextState) return;
+  prevState = JSON.stringify(session);
+  session = JSON.parse(nextState);
+  nextState = null;
+  renderSession();
+  saveState();
+}
+
+function saveUndo() { prevState = JSON.stringify(session); nextState = null; }
+function doReset() { document.getElementById('modal-overlay').classList.add('open'); }
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+function confirmReset() {
+  closeModal();
+  session = null; prevState = null; nextState = null;
+  startSession();
+}
+
+// ── RENDER ─────────────────────────────────────────────────────────────────
+function renderSession() {
+  const has = !!session;
+  document.getElementById('empty-state').style.display = has ? 'none' : 'flex';
+  document.getElementById('session-ui').style.display = has ? 'flex' : 'none';
+  if (!has) { updatePoolDesc(); return; }
+
+  const idMap = Object.fromEntries(session.pool.map(w => [w.id, w]));
+  const total = session.totalPool;
+  const decided = Object.keys(session.eliminated).length + session.found.length;
+  const remaining = session.active.length + session.rescued.length;
+  const pct = total > 0 ? Math.round(decided / total * 100) : 0;
+
+  document.getElementById('stat-remaining').textContent = remaining;
+  document.getElementById('stat-decided').textContent = decided;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = `${decided} of ${total} decided (${pct}%)`;
+
+  const slider = document.getElementById('batch-slider');
+  slider.max = Math.min(20, Math.max(2, session.active.length));
+  slider.value = session.batchSize;
+  document.getElementById('batch-val').textContent = session.batchSize;
+  document.getElementById('undo-btn').disabled = !prevState;
+  document.getElementById('redo-btn').disabled = !nextState;
+
+  const grid = document.getElementById('card-grid');
+  grid.innerHTML = '';
+  session.currentBatch.forEach(id => {
+    const w = idMap[id];
+    if (!w) return;
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.dataset.id = id;
+    const name = document.createElement('div');
+    name.className = 'card-name';
+    name.textContent = w.name;
+    card.appendChild(name);
+    if (w.cagematch_url) {
+      const link = document.createElement('a');
+      link.className = 'card-link';
+      link.href = '#';
+      link.textContent = '↗ cagematch';
+      link.addEventListener('click', e => { e.stopPropagation(); e.preventDefault(); window.open(w.cagematch_url, '_blank'); });
+      card.appendChild(link);
+    }
+    card.addEventListener('click', () => { card.classList.toggle('selected'); updateConfirm(); });
+    grid.appendChild(card);
+  });
+  updateConfirm();
+  renderFound(idMap);
+}
+
+function updateConfirm() {
+  const n = document.querySelectorAll('.card.selected').length;
+  document.getElementById('sel-count').textContent = `${n} selected`;
+  document.getElementById('confirm-btn').disabled = n === 0;
+}
+
+function onBatchChange(val) {
+  if (!session) return;
+  session.batchSize = parseInt(val);
+  document.getElementById('batch-val').textContent = val;
+  session.queue = [...session.currentBatch, ...(session.queue || [])];
+  drawBatch();
+  renderSession();
+  saveState();
+}
+
+function renderFound(idMap) {
+  if (!idMap && session) idMap = Object.fromEntries(session.pool.map(w => [w.id, w]));
+  const list = document.getElementById('found-list');
+  if (!session || !session.found.length) {
+    list.innerHTML = '<div class="found-empty">Your ranked wrestlers will appear here as you pick.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  session.found.forEach((f, i) => {
+    const w = idMap[f.id];
+    if (!w) return;
+    const item = document.createElement('div');
+    item.className = 'found-item';
+    item.draggable = true;
+    item.dataset.idx = i;
+    item.innerHTML = `
+      <span class="drag-handle">⠿</span>
+      <span class="found-rank ${i < 3 ? 'top' : ''}">#${f.rank}</span>
+      <span class="found-name">${w.name}</span>
+      ${w.cagematch_url ? `<a class="found-link" href="#" onclick="event.preventDefault();window.open('${w.cagematch_url}','_blank')">↗</a>` : ''}
+    `;
+    item.addEventListener('dragstart', e => {
+      dragSrcIdx = i;
+      setTimeout(() => item.classList.add('dragging'), 0);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    item.addEventListener('dragend', () => {
+      item.classList.remove('dragging');
+      document.querySelectorAll('.found-item').forEach(el => el.classList.remove('drag-over'));
+    });
+    item.addEventListener('dragover', e => {
+      e.preventDefault();
+      document.querySelectorAll('.found-item').forEach(el => el.classList.remove('drag-over'));
+      item.classList.add('drag-over');
+    });
+    item.addEventListener('drop', e => {
+      e.preventDefault();
+      if (dragSrcIdx === null || dragSrcIdx === i) return;
+      const moved = session.found.splice(dragSrcIdx, 1)[0];
+      session.found.splice(i, 0, moved);
+      session.found.forEach((f, idx) => f.rank = idx + 1);
+      dragSrcIdx = null;
+      renderFound(idMap);
+      saveState();
+    });
+    list.appendChild(item);
+  });
+}
+
+// ── EXPORT (placeholder) ───────────────────────────────────────────────────
+function doExport() {
+  alert('Export coming soon.');
+}
+
+// ── TABS ───────────────────────────────────────────────────────────────────
+function showTab(tab) {
+  const isPicker = tab === 'picker';
+  const pv = document.getElementById('picker-view');
+  const ov = document.getElementById('options-view');
+  if (pv) pv.style.display = isPicker ? 'flex' : 'none';
+  if (ov) { ov.style.display = isPicker ? 'none' : 'flex'; ov.classList.toggle('visible', !isPicker); }
+  document.getElementById('tab-picker').classList.toggle('active', isPicker);
+  document.getElementById('tab-options').classList.toggle('active', !isPicker);
+  if (!isPicker) updatePoolDesc();
+}
+
+// ── PERSISTENCE ────────────────────────────────────────────────────────────
+function saveState() {
+  try { localStorage.setItem('wr', JSON.stringify({ session, filters })); } catch(e) {}
+}
+function loadState() {
+  try { const s = localStorage.getItem('wr'); return s ? JSON.parse(s) : null; } catch(e) { return null; }
+}
+
+loadWrestlers();
+</script>
+</body>
+</html>
